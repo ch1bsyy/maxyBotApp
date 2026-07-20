@@ -39,25 +39,33 @@ app.use("/api/v1/webhook", webhookRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/accounts", accountRoutes);
 
-// Koneksi ke MongoDB
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
+const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     console.log("✅ Successfully connected to MongoDB");
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error("Connection error", err);
-    process.exit();
-  });
+  }
+};
+
+connectDB();
 
 // Route sederhana untuk tes
 app.get("/", (req, res) => {
   res.send("Dashboard API is running!");
 });
 
-// Menjalankan server
-app.listen(PORT, () => {
-  console.log(`⚡ Server is running on port ${PORT}!`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`⚡ Server is running locally on port ${PORT}!`);
+  });
+}
 
 module.exports = app;
