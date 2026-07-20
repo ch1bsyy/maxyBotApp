@@ -27,29 +27,28 @@ const webhookRoutes = require("./routes/webhookRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    console.log("✅ MongoDB Connected (Serverless Middleware)");
+    next();
+  } catch (err) {
+    console.error("❌ MongoDB Connection Error:", err);
+    return res.status(500).json({ message: "Gagal menyambung ke database." });
+  }
+});
+
 // Gunakan Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/webhook", webhookRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/accounts", accountRoutes);
-
-const connectDB = async () => {
-  if (mongoose.connection.readyState >= 1) {
-    return;
-  }
-
-  try {
-    await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
-    console.log("✅ Successfully connected to MongoDB");
-  } catch (err) {
-    console.error("Connection error", err);
-  }
-};
-
-connectDB();
 
 // Route sederhana untuk tes
 app.get("/", (req, res) => {
