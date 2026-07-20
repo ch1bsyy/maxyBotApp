@@ -2,10 +2,9 @@ import axios from "axios";
 
 // Initialiation with backend
 const api = axios.create({
-  baseURL: "http://localhost:5001/api/v1",
+  baseURL: "https://maxy-bot-app.vercel.app/api/v1",
   headers: {
     "Content-Type": "application/json",
-    "ngrok-skip-browser-warning": "true",
   },
 });
 // const api = axios.create({
