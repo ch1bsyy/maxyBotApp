@@ -1,27 +1,41 @@
-const Account = require("../models/accountModel");
 const bcrypt = require("bcryptjs");
 
 // GET ALL ACCOUNTS
 exports.getAccounts = async (req, res) => {
   try {
     const { search, isActive } = req.query;
-    let query = {};
+
+    let query = req.supabase
+      .from("accounts")
+      .select(
+        "id, username, full_name, role, is_active, profile_picture, created_at",
+      )
+      .order("created_at", { ascending: false });
 
     if (search) {
-      query.$or = [
-        { full_name: { $regex: search, $options: "i" } },
-        { username: { $regex: search, $options: "i" } },
-      ];
-    }
-    if (isActive !== undefined) {
-      query.isActive = isActive === "true";
+      query = query.or(
+        `full_name.ilike.%${search}%,username.ilike.%${search}%`,
+      );
     }
 
-    const accounts = await Account.find(query)
-      .select("-password")
-      .sort({ createdAt: -1 });
-    res.status(200).json(accounts);
+    if (isActive !== undefined) {
+      query = query.eq("is_active", isActive === "true");
+    }
+
+    const { data: accounts, error } = await query;
+
+    if (error) throw error;
+
+    const formattedAccounts = accounts.map((acc) => ({
+      ...acc,
+      _id: acc.id,
+      isActive: acc.is_active,
+      createdAt: acc.created_at,
+    }));
+
+    res.status(200).json(formattedAccounts);
   } catch (error) {
+    console.error("Get Accounts Error:", error);
     res.status(500).json({ message: "Gagal memuat data akun" });
   }
 };
@@ -31,20 +45,45 @@ exports.createAccount = async (req, res) => {
   try {
     const { username, full_name, password, role } = req.body;
 
-    const isExists = await Account.findOne({ username });
+    const { data: isExists } = await req.supabase
+      .from("accounts")
+      .select("id")
+      .eq("username", username)
+      .single();
+
     if (isExists)
       return res.status(400).json({ message: "Username sudah digunakan!" });
 
-    const newAccount = await Account.create({
-      username,
-      full_name,
-      password,
-      role,
-    });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Insert to Supabase
+    const { data: newAccount, error } = await req.supabase
+      .from("accounts")
+      .insert([
+        {
+          username,
+          full_name,
+          password: hashedPassword,
+          role: role || "ADMIN",
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const mappedAccount = {
+      ...newAccount,
+      _id: newAccount.id,
+      isActive: newAccount.is_active,
+    };
+
     res
       .status(201)
-      .json({ message: "Akun staf berhasil ditambahkan", data: newAccount });
+      .json({ message: "Akun staf berhasil ditambahkan", data: mappedAccount });
   } catch (error) {
+    console.error("Create Account Error:", error);
     res.status(500).json({ message: "Gagal membuat akun" });
   }
 };
@@ -55,26 +94,52 @@ exports.updateAccount = async (req, res) => {
     const { id } = req.params;
     const { username, full_name, password, role } = req.body;
 
-    const account = await Account.findById(id);
-    if (!account)
-      return res.status(404).json({ message: "Akun tidak ditemukan" });
+    const { data: account, error: findError } = await req.supabase
+      .from("accounts")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (username !== account.username) {
-      const isExists = await Account.findOne({ username });
-      if (isExists)
+    if (findError || !account) {
+      return res.status(404).json({ message: "Akun tidak ditemukan" });
+    }
+
+    const updateData = {};
+
+    // Check Duplicate Username
+    if (username && username !== account.username) {
+      const { data: isExists } = await req.supabase
+        .from("accounts")
+        .select("id")
+        .eq("username", username)
+        .single();
+
+      if (isExists) {
         return res
           .status(400)
           .json({ message: "Username sudah digunakan oleh staf lain!" });
-      account.username = username;
+      }
+      updateData.username = username;
     }
 
-    if (full_name) account.full_name = full_name;
-    if (role) account.role = role;
-    if (password) account.password = password;
+    if (full_name) updateData.full_name = full_name;
+    if (role) updateData.role = role;
 
-    await account.save();
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
+    const { error: updateError } = await req.supabase
+      .from("accounts")
+      .update(updateData)
+      .eq("id", id);
+
+    if (updateError) throw updateError;
+
     res.status(200).json({ message: "Data akun berhasil diperbarui" });
   } catch (error) {
+    console.error("Update Account Error:", error);
     res.status(500).json({ message: "Gagal memperbarui akun" });
   }
 };
@@ -83,18 +148,31 @@ exports.updateAccount = async (req, res) => {
 exports.deactiveAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    const account = await Account.findById(id);
-    if (!account)
-      return res.status(404).json({ message: "Akun tidak ditemukan" });
 
-    // Toggle Status
-    account.isActive = !account.isActive;
-    await account.save();
+    const { data: account, error: findError } = await req.supabase
+      .from("accounts")
+      .select("is_active")
+      .eq("id", id)
+      .single();
+
+    if (findError || !account) {
+      return res.status(404).json({ message: "Akun tidak ditemukan" });
+    }
+
+    const newStatus = !account.is_active;
+
+    const { error: updateError } = await req.supabase
+      .from("accounts")
+      .update({ is_active: newStatus })
+      .eq("id", id);
+
+    if (updateError) throw updateError;
 
     res.status(200).json({
-      message: `Akun berhasil ${account.isActive ? "diaktifkan" : "dinonaktifkan"}`,
+      message: `Akun berhasil ${newStatus ? "diaktifkan" : "dinonaktifkan"}`,
     });
   } catch (error) {
+    console.error("Toggle Status Error:", error);
     res.status(500).json({ message: "Gagal mengubah status akun" });
   }
 };

@@ -1,8 +1,3 @@
-const User = require("../models/userModel");
-const Conversation = require("../models/conversationModel");
-const Message = require("../models/messageModel");
-const mongoose = require("mongoose");
-
 // GET METRIK DASHBOARD
 exports.getDashboardMetrics = async (req, res) => {
   try {
@@ -10,71 +5,70 @@ exports.getDashboardMetrics = async (req, res) => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
 
     // Total Chat Today
-    const totalChatToday = await User.countDocuments({
-      lastInteractionAt: { $gte: today },
+    const { count: totalChatToday } = await req.supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .gte("last_interaction_at", todayISO);
+
+    // Total Leads by status
+    const { count: hotLeads } = await req.supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .eq("lead_type", "hot")
+      .eq("is_lead_active", true);
+
+    const { count: generalLeads } = await req.supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .eq("lead_type", "general")
+      .eq("is_lead_active", true);
+
+    // Completed Leads and Ranking Staff
+    const { data: usersHistory } = await req.supabase
+      .from("users")
+      .select("handling_history");
+
+    let completedLeads = 0;
+    const adminCounts = {};
+
+    usersHistory.forEach((u) => {
+      if (Array.isArray(u.handling_history)) {
+        u.handling_history.forEach((history) => {
+          if (history.handledBy) {
+            // count completedLeads by role
+            if (
+              currentUser.role === "SUPERADMIN" ||
+              history.handledBy === currentUser._id
+            ) {
+              completedLeads++;
+            }
+            // add to admin's statistik
+            adminCounts[history.handledBy] =
+              (adminCounts[history.handledBy] || 0) + 1;
+          }
+        });
+      }
     });
 
-    // Menghitung Leads berdasarkan status
-    const hotLeads = await User.countDocuments({
-      leadType: "hot",
-      isLeadActive: true,
-    });
+    // Take Detail Admin for Ranking
+    const { data: admins } = await req.supabase
+      .from("accounts")
+      .select("id, username, full_name");
+    const adminMap = {};
+    admins.forEach((a) => (adminMap[a.id] = a));
 
-    const generalLeads = await User.countDocuments({
-      leadType: "general",
-      isLeadActive: true,
-    });
-
-    const completedMatchCriteria = {
-      "handlingHistory.handledBy": { $ne: null },
-    };
-
-    if (currentUser.role !== "SUPERADMIN") {
-      completedMatchCriteria["handlingHistory.handledBy"] =
-        new mongoose.Types.ObjectId(currentUser._id);
-    }
-
-    const completedLeadsAgg = await User.aggregate([
-      { $unwind: "$handlingHistory" },
-      { $match: completedMatchCriteria },
-      { $count: "total" },
-    ]);
-
-    const completedLeads =
-      completedLeadsAgg.length > 0 ? completedLeadsAgg[0].total : 0;
-
-    // Ranking Staf
-    const adminRanking = await User.aggregate([
-      { $unwind: "$handlingHistory" },
-      { $match: { "handlingHistory.handledBy": { $ne: null } } },
-      {
-        $group: {
-          _id: "$handlingHistory.handledBy",
-          totalResolved: { $sum: 1 },
-        },
-      },
-      {
-        $lookup: {
-          from: "accounts",
-          localField: "_id",
-          foreignField: "_id",
-          as: "adminData",
-        },
-      },
-      { $unwind: "$adminData" },
-      { $sort: { totalResolved: -1 } },
-      { $limit: 5 },
-      {
-        $project: {
-          _id: 0,
-          adminName: "$adminData.full_name",
-          username: "$adminData.username",
-          totalResolved: 1,
-        },
-      },
-    ]);
+    // Form Array Ranking
+    const adminRanking = Object.keys(adminCounts)
+      .map((adminId) => ({
+        adminName: adminMap[adminId]?.full_name || "Unknown",
+        username: adminMap[adminId]?.username || "unknown",
+        totalResolved: adminCounts[adminId],
+      }))
+      .sort((a, b) => b.totalResolved - a.totalResolved)
+      .slice(0, 5);
 
     // Grafik
     const chartData = [];
@@ -88,25 +82,28 @@ exports.getDashboardMetrics = async (req, res) => {
       const endOfDay = new Date(startOfDay);
       endOfDay.setDate(endOfDay.getDate() + 1);
 
-      const count = await User.countDocuments({
-        lastInteractionAt: { $gte: startOfDay, $lt: endOfDay },
-      });
+      const { count } = await req.supabase
+        .from("users")
+        .select("*", { count: "exact", head: true })
+        .gte("last_interaction_at", startOfDay.toISOString())
+        .lt("last_interaction_at", endOfDay.toISOString());
 
       chartData.push({
         name: daysIndo[startOfDay.getDay()],
-        chat: count,
+        chat: count || 0,
       });
     }
 
     res.status(200).json({
-      totalChatToday,
-      hotLeads,
-      generalLeads,
+      totalChatToday: totalChatToday || 0,
+      hotLeads: hotLeads || 0,
+      generalLeads: generalLeads || 0,
       completedLeads,
       adminRanking,
       chartData,
     });
   } catch (error) {
+    console.error("Metrik Error:", error);
     res.status(500).json({ message: "Error fetching metrics" });
   }
 };
@@ -114,31 +111,39 @@ exports.getDashboardMetrics = async (req, res) => {
 // GET LIST USER BY LEADS
 exports.getLeads = async (req, res) => {
   try {
-    const { search, leadType, isLeadActive } = req.query; // filter from frontend
+    const { search, leadType, isLeadActive } = req.query;
 
-    let query = {};
+    let query = req.supabase
+      .from("users")
+      .select("*, handledBy:handled_by(id, username, full_name)")
+      .order("last_interaction_at", { ascending: false });
+
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { phone_number: { $regex: search, $options: "i" } },
-      ];
+      query = query.or(`name.ilike.%${search}%,phone_number.ilike.%${search}%`);
     }
 
-    if (leadType) query.leadType = leadType;
+    if (leadType) query = query.eq("lead_type", leadType);
+    if (isLeadActive !== undefined)
+      query = query.eq("is_lead_active", isLeadActive === "true");
 
-    // Konversi string "true"/"false" from query params frontend to boolean
-    if (isLeadActive !== undefined) {
-      query.isLeadActive = isLeadActive === "true";
-    }
+    const { data: leads, error } = await query;
+    if (error) throw error;
 
-    //sorting descending
-    // Populate 'handledBy' to display the admin handling on frontend
-    const leads = await User.find(query)
-      .populate("handledBy", "username full_name")
-      .sort({ lastInteractionAt: -1 });
+    const mappedLeads = leads.map((l) => ({
+      ...l,
+      _id: l.id,
+      leadType: l.lead_type,
+      isLeadActive: l.is_lead_active,
+      handlingMode: l.handling_mode,
+      lastInteractionAt: l.last_interaction_at,
+      employment_status: l.employment_status,
+      employement_status: l.employment_status,
+      handledBy: l.handledBy ? { ...l.handledBy, _id: l.handledBy.id } : null,
+    }));
 
-    res.status(200).json(leads);
+    res.status(200).json(mappedLeads);
   } catch (error) {
+    console.error("Leads Error:", error);
     res.status(500).json({ message: "Error fetching leads" });
   }
 };
@@ -148,21 +153,53 @@ exports.getChatHistory = async (req, res) => {
   try {
     const { phone_number } = req.params;
 
+    const { data: user, error: userError } = await req.supabase
+      .from("users")
+      .select("*, handledBy:handled_by(id, username, full_name)")
+      .eq("phone_number", phone_number)
+      .single();
+
+    if (userError || !user)
+      return res.status(404).json({ message: "User not found" });
+
+    const mappedUser = {
+      ...user,
+      _id: user.id,
+      leadType: user.lead_type,
+      isLeadActive: user.is_lead_active,
+      handlingMode: user.handling_mode,
+      lastInteractionAt: user.last_interaction_at,
+      handledBy: user.handledBy
+        ? { ...user.handledBy, _id: user.handledBy.id }
+        : null,
+    };
+
+    // Take Conversation
+    const { data: conversation } = await req.supabase
+      .from("conversations")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!conversation)
+      return res.status(200).json({ user: mappedUser, messages: [] });
+
     const user = await User.findOne({ phone_number }).populate(
       "handledBy",
       "username full_name",
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const conversation = await Conversation.findOne({ userId: user._id });
-    if (!conversation) return res.status(200).json({ user, messages: [] });
+    // Take Messages
+    const { data: messages } = await req.supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversation.id)
+      .order("timestamp", { ascending: true });
 
-    const messages = await Message.find({
-      conversationId: conversation._id,
-    }).sort({ timestamp: 1 });
-
-    res.status(200).json({ user, messages });
+    res.status(200).json({ user: mappedUser, messages: messages || [] });
   } catch (error) {
+    console.error("Chat History Error:", error);
     res.status(500).json({ message: "Error fetching chat history" });
   }
 };
@@ -170,7 +207,6 @@ exports.getChatHistory = async (req, res) => {
 // Endpoint: PUT /api/v1/dashboard/update-handling/:phone_number
 exports.updateHandlingMode = async (req, res) => {
   const { phone_number } = req.params;
-  // action = takeover or complete
   const { action, accountId } = req.body;
 
   if (!["takeover", "complete"].includes(action)) {
@@ -178,46 +214,71 @@ exports.updateHandlingMode = async (req, res) => {
   }
 
   try {
-    const userToUpdate = await User.findOne({ phone_number });
-    if (!userToUpdate)
+    const { data: userToUpdate, error } = await req.supabase
+      .from("users")
+      .select("*")
+      .eq("phone_number", phone_number)
+      .single();
+
+    if (error || !userToUpdate)
       return res.status(404).json({ message: "User not found" });
 
-    // Savety for date
-    if (!userToUpdate.lastInteractionAt) {
-      userToUpdate.lastInteractionAt = userToUpdate.createdAt;
-    }
-
+    const updatePayload = {};
     if (action === "takeover") {
-      userToUpdate.handlingMode = "manual";
-      userToUpdate.isLeadActive = true;
-      userToUpdate.handledBy = accountId || null;
+      updatePayload.handling_mode = "manual";
+      updatePayload.is_lead_active = true;
+      updatePayload.handled_by = accountId || null;
+      updatePayload.last_interaction_at = new Date().toISOString();
     } else if (action === "complete") {
-      userToUpdate.handlingHistory.push({
-        handledBy: userToUpdate.handledBy,
-        leadType: userToUpdate.leadType,
-        completedAt: new Date(),
-      });
+      const historyItem = {
+        handledBy: userToUpdate.handled_by,
+        leadType: userToUpdate.lead_type,
+        completedAt: new Date().toISOString(),
+      };
 
-      // Reset Status
-      userToUpdate.handlingMode = "bot";
-      userToUpdate.isLeadActive = false;
-      userToUpdate.leadType = "general";
-      userToUpdate.handledBy = null;
+      const currentHistory = Array.isArray(userToUpdate.handling_history)
+        ? userToUpdate.handling_history
+        : [];
+
+      currentHistory.push(historyItem);
+
+      updatePayload.handling_history = currentHistory;
+      updatePayload.handling_mode = "bot";
+      updatePayload.is_lead_active = false;
+      updatePayload.lead_type = "general";
+      updatePayload.handled_by = null;
     }
 
-    await userToUpdate.save();
+    const { error: updateError } = await req.supabase
+      .from("users")
+      .update(updatePayload)
+      .eq("phone_number", phone_number);
 
-    const updatedUser = await User.findOne({ phone_number }).populate(
-      "handledBy",
-      "username full_name",
-    );
+    if (updateError) throw updateError;
+
+    const { data: updatedUser } = await req.supabase
+      .from("users")
+      .select("*, handledBy:handled_by(id, username, full_name)")
+      .eq("phone_number", phone_number)
+      .single();
+
+    const mappedUser = {
+      ...updatedUser,
+      _id: updatedUser.id,
+      leadType: updatedUser.lead_type,
+      isLeadActive: updatedUser.is_lead_active,
+      handlingMode: updatedUser.handling_mode,
+      handledBy: updatedUser.handledBy
+        ? { ...updatedUser.handledBy, _id: updatedUser.handledBy.id }
+        : null,
+    };
 
     res.status(200).json({
       message: `User status successfully updated for action: ${action}`,
-      user: updatedUser,
+      user: mappedUser,
     });
   } catch (error) {
-    console.error("Update Handling Mode Error:", error);
+    console.error("Update Handling Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -225,10 +286,19 @@ exports.updateHandlingMode = async (req, res) => {
 // GET UNIQUE CITIES
 exports.getCities = async (req, res) => {
   try {
-    // Get City and Ignore null value
-    const cities = await User.distinct("city", { city: { $nin: [null, ""] } });
-    res.status(200).json(cities);
+    const { data, error } = await req.supabase
+      .from("users")
+      .select("city")
+      .not("city", "is", null)
+      .neq("city", "");
+
+    if (error) throw error;
+
+    const uniqueCities = [...new Set(data.map((user) => user.city))];
+
+    res.status(200).json(uniqueCities);
   } catch (error) {
+    console.error("Cities Error:", error);
     res.status(500).json({ message: "Error fetching cities" });
   }
 };

@@ -1,7 +1,17 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+
+const { createClient } = require("@supabase/supabase-js");
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+app.use((req, res, next) => {
+  req.supabase = supabase;
+  next();
+});
 
 // Load environment variables dari file .env
 dotenv.config();
@@ -26,23 +36,6 @@ const authRoutes = require("./routes/authRoutes");
 const webhookRoutes = require("./routes/webhookRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const accountRoutes = require("./routes/accountRoutes");
-
-app.use(async (req, res, next) => {
-  if (mongoose.connection.readyState === 1) {
-    return next();
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-    });
-    console.log("✅ MongoDB Connected (Serverless Middleware)");
-    next();
-  } catch (err) {
-    console.error("❌ MongoDB Connection Error:", err);
-    return res.status(500).json({ message: "Gagal menyambung ke database." });
-  }
-});
 
 // Gunakan Routes
 app.use("/api/v1/auth", authRoutes);

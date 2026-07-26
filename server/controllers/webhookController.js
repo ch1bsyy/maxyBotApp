@@ -1,7 +1,3 @@
-const User = require("../models/userModel");
-const Conversation = require("../models/conversationModel");
-const Message = require("../models/messageModel");
-
 // Endpoint: POST /api/v1/webhook/n8n
 exports.handleN8nWebhook = async (req, res) => {
   const {
@@ -31,53 +27,88 @@ exports.handleN8nWebhook = async (req, res) => {
   }
 
   try {
-    // object kosong untuk menampung data yang akan di-update
-    const updateData = {};
+    const updatePayload = {};
 
-    // Isi objek hanya dengan data yang valid (tidak null, undefined, atau string kosong)
-    if (name) updateData.name = name;
-    if (university) updateData.university = university;
-    if (city) updateData.city = city;
-    if (partner) updateData.partner = partner;
-    if (full_name) updateData.full_name = full_name;
-    if (gender) updateData.gender = gender;
-    if (employment_status) updateData.employment_status = employment_status;
-    if (ipk) updateData.ipk = ipk;
+    if (name) updatePayload.name = name;
+    if (university) updatePayload.university = university;
+    if (city) updatePayload.city = city;
+    if (partner) updatePayload.partner = partner;
+    if (full_name) updatePayload.full_name = full_name;
+    if (gender) updatePayload.gender = gender;
+    if (employment_status) updatePayload.employment_status = employment_status;
+    if (ipk) updatePayload.ipk = ipk;
 
-    updateData.isLeadActive = true;
-
-    updateData.lastInteractionAt = new Date();
+    updatePayload.is_lead_active = true;
+    updatePayload.last_interaction_at = new Date().toISOString();
 
     if (isConnectToCS === true || leadType === "hot") {
-      updateData.handlingMode = "manual";
-      updateData.leadType = leadType || "hot";
-      updateData.handledBy = null;
+      updatePayload.handling_mode = "manual";
+      updatePayload.lead_type = leadType || "hot";
+      updatePayload.handled_by = null;
     }
 
-    // Langkah 1: Cari atau buat user baru (Find or Create)
-    const user = await User.findOneAndUpdate(
-      { phone_number: phone_number },
-      // $set hanya akan meng-update field yang ada di dalam `updateData`.
-      { $set: updateData },
-      { upsert: true, new: true },
-    );
+    // Find or Create New User
+    let { data: user } = await req.supabase
+      .from("users")
+      .select("*")
+      .eq("phone_number", phone_number)
+      .single();
 
-    // Langkah 2: Cari atau buat 'wadah' percakapan untuk user ini.
-    const conversation = await Conversation.findOneAndUpdate(
-      { userId: user._id },
-      { $set: { userId: user._id } },
-      { upsert: true, new: true },
-    );
+    if (user) {
+      const { data: updatedUser, error: updateError } = await req.supabase
+        .from("users")
+        .update(updatePayload)
+        .eq("phone_number", phone_number)
+        .select()
+        .single();
 
-    // Langkah 3: Siapkan semua pesan untuk disimpan dengan menambahkan conversationId.
+      if (updateError) throw updateError;
+      user = updatedUser;
+    } else {
+      updatePayload.phone_number = phone_number;
+      const { data: newUser, error: insertError } = await req.supabase
+        .from("users")
+        .insert([updatePayload])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      user = newUser;
+    }
+
+    // Find or Create Conversation
+    let { data: conversation } = await req.supabase
+      .from("conversations")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!conversation) {
+      const { data: newConv, error: convError } = await req.supabase
+        .from("conversations")
+        .insert([{ user_id: user.id }])
+        .select()
+        .single();
+
+      if (convError) throw convError;
+      conversation = newConv;
+    }
+
+    // Prepare Array Messages
     const newMessages = messages.map((msg) => ({
-      ...msg, // Salin properti yang ada (sender, text)
-      conversationId: conversation._id, // Tambahkan 'link' ke wadah percakapan
+      conversation_id: conversation.id,
+      sender: msg.sender,
+      text: msg.text,
+      timestamp: msg.timestamp || new Date().toISOString(),
     }));
 
-    // Langkah 4: Simpan semua pesan baru ke koleksi Message sekaligus.
-    // Ini jauh lebih efisien daripada $push.
+    // Insert Messages
+    const { error: msgError } = await req.supabase
+      .from("messages")
+      .insert(newMessages);
     await Message.insertMany(newMessages);
+
+    if (msgError) throw msgError;
 
     res.status(200).json({ message: "Data processed successfully." });
   } catch (error) {
@@ -90,13 +121,18 @@ exports.handleN8nWebhook = async (req, res) => {
 exports.checkHandlingStatus = async (req, res) => {
   try {
     const { phone_number } = req.params;
-    const user = await User.findOne({ phone_number: phone_number });
 
-    if (!user) {
+    const { data: user, error } = await req.supabase
+      .from("users")
+      .select("handling_mode")
+      .eq("phone_number", phone_number)
+      .single();
+
+    if (error || !user) {
       return res.status(200).json({ handlingMode: "bot" });
     }
 
-    return res.status(200).json({ handlingMode: user.handlingMode });
+    return res.status(200).json({ handlingMode: user.handling_mode });
   } catch (error) {
     console.error("Status Check Error", error);
     res.status(500).json({ message: "Internal server error" });

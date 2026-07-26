@@ -1,5 +1,4 @@
 const jwt = require("jsonwebtoken");
-const Account = require("../models/accountModel");
 
 // Validate JWT Login
 exports.protect = async (req, res, next) => {
@@ -12,7 +11,23 @@ exports.protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      req.user = await Account.findById(decoded.id).select("-password");
+      const { data: account, error } = await req.supabase
+        .from("accounts")
+        .select("id, username, full_name, role, is_active, profile_picture")
+        .eq("id", decoded.id)
+        .single();
+
+      if (error || !account) {
+        return res
+          .status(401)
+          .json({ message: "Akses ditolak, token tidak valid." });
+      }
+
+      req.user = {
+        ...account,
+        _id: account.id,
+      };
+
       next();
     } catch (error) {
       res.status(401).json({ message: "Akses ditolak, token tidak valid." });
