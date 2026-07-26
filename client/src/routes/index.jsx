@@ -8,6 +8,7 @@ import DetailLead from "../pages/DetailLead";
 import Customers from "../pages/Customers";
 import Profile from "../pages/Profile";
 import Accounts from "../pages/Accounts";
+import KnowledgeBase from "../pages/KnowledgeBase";
 import LogoMaxy from "../assets/images/logo_maxy.png";
 
 // Guard
@@ -96,6 +97,8 @@ const AppRoutes = () => {
           <Route path="leads/:phone_number" element={<DetailLead />} />
 
           <Route path="customers" element={<Customers />} />
+
+          <Route path="knowledge" element={<KnowledgeBase />} />
 
           <Route path="profile" element={<Profile />} />
 

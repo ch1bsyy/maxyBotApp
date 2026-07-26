@@ -9,6 +9,7 @@ import {
   FiChevronRight,
   FiChevronLeft,
   FiShield,
+  FiDatabase,
 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
@@ -33,6 +34,11 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       name: "Manajemen Leads",
       path: "/dashboard/leads",
       icon: <FiMessageCircle size={20} />,
+    },
+    {
+      name: "Knowledge Base",
+      path: "/dashboard/knowledge",
+      icon: <FiDatabase size={20} />,
     },
     {
       name: "Data Pelanggan",

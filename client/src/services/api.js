@@ -53,4 +53,11 @@ export const managementAccountService = {
   toggleStatusAccount: (id) => api.patch(`/accounts/${id}/toggle-status`),
 };
 
+export const knowledgeService = {
+  getAll: (table) => api.get(`/knowledge/${table}`),
+  create: (table, data) => api.post(`/knowledge/${table}`, data),
+  update: (table, id, data) => api.put(`/knowledge/${table}/${id}`, data),
+  delete: (table, id) => api.get(`/knowledge/${table}/${id}`),
+};
+
 export default api;
