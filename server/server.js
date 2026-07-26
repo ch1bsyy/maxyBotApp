@@ -3,24 +3,18 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
 
-global.WebSocket = require("ws");
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-app.use((req, res, next) => {
-  req.supabase = supabase;
-  next();
-});
-
 // Load environment variables dari file .env
 dotenv.config();
+
+global.WebSocket = require("ws");
 
 // Inisialisasi aplikasi Express
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI;
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware
 app.use(
@@ -31,6 +25,11 @@ app.use(
   }),
 );
 app.use(express.json());
+
+app.use((req, res, next) => {
+  req.supabase = supabase;
+  next();
+});
 
 // Import Routes
 const authRoutes = require("./routes/authRoutes");
