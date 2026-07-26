@@ -118,8 +118,9 @@ const DetailLead = () => {
         isActive: true,
       });
 
+      const currentOwnerId = userData.handledBy?._id;
       const filteredAdmins = res.data.filter(
-        (admin) => admin._id !== accountUser._id,
+        (admin) => admin._id !== currentOwnerId,
       );
 
       setAvailableAdmins(filteredAdmins);
@@ -150,6 +151,10 @@ const DetailLead = () => {
       </div>
     );
   }
+
+  const isOwner = userData.handledBy?._id === accountUser?._id;
+  const isSuperAdmin = accountUser?.role === "SUPERADMIN";
+  const canManageLead = isOwner || isSuperAdmin;
 
   return (
     <div className="space-y-6 h-[calc(100vh-6rem)] flex flex-col">
@@ -256,15 +261,22 @@ const DetailLead = () => {
                 </button>
               ) : (
                 <>
-                  {userData.handledBy?._id === accountUser?._id ? (
+                  {canManageLead ? (
                     <>
+                      {/* Show Badge if Superadmin */}
+                      {isSuperAdmin && !isOwner && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                          <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
+                            🛡️ Akses Superadmin: Lead ini milik{" "}
+                            <span className="font-bold">
+                              {userData.handledBy?.full_name}
+                            </span>
+                          </p>
+                        </div>
+                      )}
+
                       <button
-                        onClick={() =>
-                          window.open(
-                            `https://wa.me/${userData.phone_number}`,
-                            "_blank",
-                          )
-                        }
+                        onClick={() => setIsWAModalOpen(true)}
                         className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
                       >
                         <FiMessageCircle size={18} /> Lanjutkan Chat (WhatsApp)
