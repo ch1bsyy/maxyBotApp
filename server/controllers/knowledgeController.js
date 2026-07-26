@@ -1,4 +1,10 @@
-const validTables = ["bootcamps", "universities", "payments", "internships"];
+const validTables = [
+  "bootcamps",
+  "universities",
+  "payments",
+  "internships",
+  "faqs",
+];
 
 exports.validateTable = (req, res, next) => {
   const { table } = req.params;

@@ -52,6 +52,14 @@ const tableConfigs = {
       { name: "is_open", label: "Status Buka", type: "checkbox" },
     ],
   },
+  faqs: {
+    title: "FAQ (Tanya Jawab)",
+    fields: [
+      { name: "question", label: "Jika User Bertanya", type: "textarea" },
+      { name: "answer", label: "Maka Jawabannya", type: "textarea" },
+      { name: "is_active", label: "Status Aktif", type: "checkbox" },
+    ],
+  },
 };
 
 const KnowledgeBase = () => {
