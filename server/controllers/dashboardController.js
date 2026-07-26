@@ -7,13 +7,13 @@ exports.getDashboardMetrics = async (req, res) => {
     today.setHours(0, 0, 0, 0);
     const todayISO = today.toISOString();
 
-    // Total Chat Today
+    // 1. Total Chat Today
     const { count: totalChatToday } = await req.supabase
       .from("users")
       .select("*", { count: "exact", head: true })
       .gte("last_interaction_at", todayISO);
 
-    // Total Leads by status
+    // 2. Menghitung Leads berdasarkan status
     const { count: hotLeads } = await req.supabase
       .from("users")
       .select("*", { count: "exact", head: true })
@@ -26,7 +26,7 @@ exports.getDashboardMetrics = async (req, res) => {
       .eq("lead_type", "general")
       .eq("is_lead_active", true);
 
-    // Completed Leads and Ranking Staff
+    // 3. Menghitung Completed Leads & Ranking Staf (In-Memory Map Reduce)
     const { data: usersHistory } = await req.supabase
       .from("users")
       .select("handling_history");
@@ -34,33 +34,34 @@ exports.getDashboardMetrics = async (req, res) => {
     let completedLeads = 0;
     const adminCounts = {};
 
-    usersHistory.forEach((u) => {
-      if (Array.isArray(u.handling_history)) {
-        u.handling_history.forEach((history) => {
-          if (history.handledBy) {
-            // count completedLeads by role
-            if (
-              currentUser.role === "SUPERADMIN" ||
-              history.handledBy === currentUser._id
-            ) {
-              completedLeads++;
+    if (usersHistory) {
+      usersHistory.forEach((u) => {
+        if (Array.isArray(u.handling_history)) {
+          u.handling_history.forEach((history) => {
+            if (history.handledBy) {
+              if (
+                currentUser.role === "SUPERADMIN" ||
+                history.handledBy === currentUser._id
+              ) {
+                completedLeads++;
+              }
+              adminCounts[history.handledBy] =
+                (adminCounts[history.handledBy] || 0) + 1;
             }
-            // add to admin's statistik
-            adminCounts[history.handledBy] =
-              (adminCounts[history.handledBy] || 0) + 1;
-          }
-        });
-      }
-    });
+          });
+        }
+      });
+    }
 
-    // Take Detail Admin for Ranking
+    // Ambil detail admin untuk ranking
     const { data: admins } = await req.supabase
       .from("accounts")
       .select("id, username, full_name");
     const adminMap = {};
-    admins.forEach((a) => (adminMap[a.id] = a));
+    if (admins) {
+      admins.forEach((a) => (adminMap[a.id] = a));
+    }
 
-    // Form Array Ranking
     const adminRanking = Object.keys(adminCounts)
       .map((adminId) => ({
         adminName: adminMap[adminId]?.full_name || "Unknown",
@@ -70,7 +71,7 @@ exports.getDashboardMetrics = async (req, res) => {
       .sort((a, b) => b.totalResolved - a.totalResolved)
       .slice(0, 5);
 
-    // Grafik
+    // 4. Grafik (7 Hari Terakhir)
     const chartData = [];
     const daysIndo = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
@@ -121,7 +122,6 @@ exports.getLeads = async (req, res) => {
     if (search) {
       query = query.or(`name.ilike.%${search}%,phone_number.ilike.%${search}%`);
     }
-
     if (leadType) query = query.eq("lead_type", leadType);
     if (isLeadActive !== undefined)
       query = query.eq("is_lead_active", isLeadActive === "true");
@@ -129,7 +129,7 @@ exports.getLeads = async (req, res) => {
     const { data: leads, error } = await query;
     if (error) throw error;
 
-    const mappedLeads = leads.map((l) => ({
+    const mappedLeads = (leads || []).map((l) => ({
       ...l,
       _id: l.id,
       leadType: l.lead_type,
@@ -174,7 +174,6 @@ exports.getChatHistory = async (req, res) => {
         : null,
     };
 
-    // Take Conversation
     const { data: conversation } = await req.supabase
       .from("conversations")
       .select("id")
@@ -184,13 +183,6 @@ exports.getChatHistory = async (req, res) => {
     if (!conversation)
       return res.status(200).json({ user: mappedUser, messages: [] });
 
-    const user = await User.findOne({ phone_number }).populate(
-      "handledBy",
-      "username full_name",
-    );
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    // Take Messages
     const { data: messages } = await req.supabase
       .from("messages")
       .select("*")
@@ -224,6 +216,7 @@ exports.updateHandlingMode = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
 
     const updatePayload = {};
+
     if (action === "takeover") {
       updatePayload.handling_mode = "manual";
       updatePayload.is_lead_active = true;
@@ -283,7 +276,7 @@ exports.updateHandlingMode = async (req, res) => {
   }
 };
 
-// GET UNIQUE CITIES
+// GET UNIQUE CITIES (JS Set Deduplication)
 exports.getCities = async (req, res) => {
   try {
     const { data, error } = await req.supabase
