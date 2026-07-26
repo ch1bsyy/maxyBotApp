@@ -248,7 +248,7 @@ const KnowledgeBase = () => {
                       >
                         {field.type === "checkbox" ? (
                           <span
-                            className={`px-2 py-1 rounded text-xs font-bold ${item[field.name] ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
+                            className={`px-3 py-1.5 rounded text-xs font-bold ${item[field.name] ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                           >
                             {item[field.name] ? "Aktif" : "Nonaktif"}
                           </span>
