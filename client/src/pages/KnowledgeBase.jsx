@@ -1,6 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
-import { FiPlus, FiEdit, FiTrash2, FiAlertCircle } from "react-icons/fi";
+import {
+  FiPlus,
+  FiEdit,
+  FiTrash2,
+  FiAlertCircle,
+  FiChevronDown,
+} from "react-icons/fi";
 import toast from "react-hot-toast";
 import { knowledgeService } from "../services/api";
 
@@ -57,6 +63,10 @@ const KnowledgeBase = () => {
   const [modalMode, setModalMode] = useState("create");
   const [formData, setFormData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -121,20 +131,25 @@ const KnowledgeBase = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (
-      window.confirm(
-        "Apakah Anda yakin ingin menghapus data ini secara permanen?",
-      )
-    ) {
-      try {
-        await knowledgeService.delete(activeTab, id);
-        toast.success("Data berhasil dihapus");
-        fetchData();
-      } catch (error) {
-        console.error("Error Delete Data:", error);
-        toast.error("Gagal menghapus data");
-      }
+  const handleDeleteClick = (id) => {
+    setItemToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!itemToDelete) return;
+    setIsDeleting(true);
+    try {
+      await knowledgeService.delete(activeTab, itemToDelete);
+      toast.success("Data berhasil dihapus");
+      fetchData();
+    } catch (error) {
+      console.error("Error Delete Data:", error);
+      toast.error("Gagal menghapus data");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -155,7 +170,7 @@ const KnowledgeBase = () => {
         </div>
         <button
           onClick={() => handleOpenModal("create")}
-          className="inline-flex items-center min-h-11 min-w-11 gap-2 px-5 py-2.5 rounded-xl font-bold shadow-md bg-brand-dark hover:bg-black dark:bg-white dark:hover:bg-gray-200 text-white dark:text-brand-dark transition-all cursor-pointer"
+          className="inline-flex items-center justify-center min-h-11 min-w-11 gap-2 px-5 py-2.5 rounded-xl font-bold shadow-md bg-brand-dark hover:bg-black dark:bg-white dark:hover:bg-gray-200 text-white dark:text-brand-dark transition-all cursor-pointer"
         >
           <FiPlus size={18} />
           <span>Tambah Data</span>
@@ -181,13 +196,13 @@ const KnowledgeBase = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
             <thead className="bg-gray-50 dark:bg-slate-900/50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   No
                 </th>
                 {currentConfig.fields.map((field, idx) => (
                   <th
                     key={idx}
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
                   >
                     {field.label}
                   </th>
@@ -222,14 +237,14 @@ const KnowledgeBase = () => {
                     key={item.id}
                     className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
                       {index + 1}
                     </td>
 
                     {currentConfig.fields.map((field, idx) => (
                       <td
                         key={idx}
-                        className="px-6 py-4 text-sm text-brand-dark dark:text-gray-300 max-w-xs truncate"
+                        className="px-6 py-4 text-sm text-center text-brand-dark dark:text-gray-300 max-w-xs truncate"
                       >
                         {field.type === "checkbox" ? (
                           <span
@@ -249,13 +264,13 @@ const KnowledgeBase = () => {
                           onClick={() => handleOpenModal("edit", item)}
                           className="w-8 h-8 min-h-11 min-w-11 rounded-lg bg-gray-100 text-gray-600 hover:bg-brand-blue hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                         >
-                          <FiEdit size={16} />
+                          <FiEdit size={18} />
                         </button>
                         <button
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDeleteClick(item.id)}
                           className="w-8 h-8 min-h-11 min-w-11 rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                         >
-                          <FiTrash2 size={16} />
+                          <FiTrash2 size={18} />
                         </button>
                       </div>
                     </td>
@@ -293,17 +308,22 @@ const KnowledgeBase = () => {
                       className="w-full min-h-11 min-w-11 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50 dark:bg-slate-700 text-brand-dark dark:text-white"
                     />
                   ) : field.type === "select" ? (
-                    <select
-                      value={formData[field.name] || ""}
-                      onChange={(e) => handleChange(e, field)}
-                      className="w-full min-h-11 min-w-11 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50 dark:bg-slate-700 text-brand-dark dark:text-white cursor-pointer"
-                    >
-                      {field.options.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={formData[field.name] || ""}
+                        onChange={(e) => handleChange(e, field)}
+                        className="w-full min-h-11 min-w-11 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50 dark:bg-slate-700 text-brand-dark dark:text-white cursor-pointer appearance-none transition-colors"
+                      >
+                        {field.options.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                        <FiChevronDown />
+                      </div>
+                    </div>
                   ) : field.type === "checkbox" ? (
                     <div className="flex items-center gap-2 mt-2">
                       <input
@@ -332,16 +352,55 @@ const KnowledgeBase = () => {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
               >
                 Batal
               </button>
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium bg-brand-blue text-white hover:bg-blue-700 transition-colors flex items-center gap-2"
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium bg-brand-blue text-white hover:bg-blue-700 transition-colors flex items-center gap-2 cursor-pointer"
               >
                 {isSaving ? "Menyimpan..." : "Simpan Data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Delete */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center shrink-0">
+                <FiAlertCircle className="text-red-500 text-2xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-brand-dark dark:text-white">
+                  Konfirmasi Hapus Data
+                </h3>
+                <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1">
+                  Apakah Anda yakin ingin menghapus data ini secara permanen?
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={executeDelete}
+                disabled={isDeleting}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-white bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isDeleting ? "Menghapus..." : "Ya, Hapus"}
               </button>
             </div>
           </div>
