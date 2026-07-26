@@ -199,9 +199,10 @@ exports.getChatHistory = async (req, res) => {
 // Endpoint: PUT /api/v1/dashboard/update-handling/:phone_number
 exports.updateHandlingMode = async (req, res) => {
   const { phone_number } = req.params;
-  const { action, accountId } = req.body;
+  const { action, accountId, targetAccountId } = req.body;
+  const currentAdminRole = req.user.role;
 
-  if (!["takeover", "complete"].includes(action)) {
+  if (!["takeover", "assign", "complete"].includes(action)) {
     return res.status(400).json({ message: "Invalid action type" });
   }
 
@@ -217,12 +218,52 @@ exports.updateHandlingMode = async (req, res) => {
 
     const updatePayload = {};
 
+    // TAKEOVER LOGIC
     if (action === "takeover") {
+      if (
+        userToUpdate.handling_mode === "manual" &&
+        userToUpdate.handled_by &&
+        userToUpdate.handled_by !== accountId
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Lead ini sudah dikunci oleh Admin lain." });
+      }
       updatePayload.handling_mode = "manual";
       updatePayload.is_lead_active = true;
       updatePayload.handled_by = accountId || null;
       updatePayload.last_interaction_at = new Date().toISOString();
-    } else if (action === "complete") {
+    }
+    // ASSIGN LOGIC
+    else if (action === "assign") {
+      if (
+        userToUpdate.handling_mode !== "manual" ||
+        (userToUpdate.handled_by !== accountId &&
+          currentAdminRole !== "SUPERADMIN")
+      ) {
+        return res.status(403).json({
+          message:
+            "Hanya pemilik lead atau Superadmin yang bisa mendelegasikan.",
+        });
+      }
+      if (!targetAccountId) {
+        return res.status(400).json({ message: "Admin tujuan harus dipilih." });
+      }
+      updatePayload.handled_by = targetAccountId;
+      updatePayload.last_interaction_at = new Date().toISOString();
+    }
+    // COMPLETE LOGIC
+    else if (action === "complete") {
+      if (
+        userToUpdate.handling_mode === "manual" &&
+        userToUpdate.handled_by !== accountId &&
+        currentAdminRole !== "SUPERADMIN"
+      ) {
+        return res.status(403).json({
+          message: "Anda tidak berhak menyelesaikan lead milik Admin lain.",
+        });
+      }
+
       const historyItem = {
         handledBy: userToUpdate.handled_by,
         leadType: userToUpdate.lead_type,

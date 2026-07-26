@@ -2,18 +2,18 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   FiArrowLeft,
-  FiUser,
   FiPhone,
   FiMapPin,
   FiBook,
   FiCheck,
   FiMessageCircle,
   FiAlertCircle,
+  FiShare,
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import toast from "react-hot-toast";
-import { dashboardService } from "../services/api";
+import { dashboardService, managementAccountService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const DetailLead = () => {
@@ -27,6 +27,11 @@ const DetailLead = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isWAModalOpen, setIsWAModalOpen] = useState(false);
+
+  const [availableAdmins, setAvailableAdmins] = useState([]);
+  const [targetAdminId, setTargetAdminId] = useState("");
 
   const chatEndRef = useRef(null);
 
@@ -59,12 +64,13 @@ const DetailLead = () => {
     try {
       await dashboardService.updateHandling(phone_number, {
         action: "complete",
+        accountId: accountUser?._id || null,
       });
       toast.success("Lead berhasil ditandai selesai");
       setIsConfirmModalOpen(false);
       navigate("/dashboard/leads");
     } catch (error) {
-      toast.error("Gagal memperbarui status");
+      toast.error(error.response?.data?.message || "Gagal memperbarui status");
       console.error("Error Update Status:", error);
     } finally {
       setIsUpdating(false);
@@ -72,26 +78,58 @@ const DetailLead = () => {
   };
 
   // Reply by WA Logic
-  const handleReplyWA = async () => {
+  const handleReplyWA = async (actionType = "takeover", targetId = null) => {
     setIsUpdating(true);
     try {
-      await dashboardService.updateHandling(phone_number, {
-        action: "takeover",
+      const payload = {
+        action: actionType,
         accountId: accountUser?._id || null,
+      };
+
+      if (actionType === "assign" && targetId) {
+        payload.targetAccountId = targetId;
+      }
+
+      const res = await dashboardService.updateHandling(phone_number, payload);
+
+      if (actionType === "takeover") {
+        setIsWAModalOpen(true);
+        toast.success("Percakapan berhasil diambil alih.");
+      } else if (actionType === "assign") {
+        toast.success("Lead berhasil didelegasikan ke admin lain.");
+        setIsAssignModalOpen(false);
+      }
+
+      setUserData(res.data.user);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal memproses aksi");
+      console.error("Action Error:", error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Open Modal Delegation
+  const openAssignModal = async () => {
+    setIsUpdating(true);
+
+    try {
+      const res = await managementAccountService.getAccounts({
+        isActive: true,
       });
 
-      window.open(`https://wa.me/${phone_number}`, "_blank");
+      const filteredAdmins = res.data.filter(
+        (admin) => admin._id !== accountUser._id,
+      );
 
-      // Update UI Locale
-      setUserData((prev) => ({
-        ...prev,
-        handlingMode: "manual",
-        handledBy: accountUser,
-      }));
-      toast.success("Percakapan diambil alih. Membuka WhatsApp...");
+      setAvailableAdmins(filteredAdmins);
+      if (filteredAdmins.length > 0) {
+        setTargetAdminId(filteredAdmins[0]._id);
+      }
+      setIsAssignModalOpen(true);
     } catch (error) {
-      toast.error("Gagal mengambil alih percakapan");
-      console.error("Error Redirect to WhatsApp", error);
+      toast.error("Gagal memuat daftar admin");
+      console.error("Error Fetching Data", error);
     } finally {
       setIsUpdating(false);
     }
@@ -210,30 +248,54 @@ const DetailLead = () => {
             <div className="flex flex-col gap-3">
               {userData.handlingMode === "bot" ? (
                 <button
-                  onClick={handleReplyWA}
+                  onClick={() => handleReplyWA("takeover")}
                   disabled={isUpdating}
                   className="w-full flex items-center justify-center gap-2 bg-brand-blue hover:bg-blue-600 text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
                 >
-                  <FiMessageCircle size={18} /> Ambil Alih dan Balas (WA)
+                  <FiMessageCircle size={18} /> Ambil Alih (Takeover)
                 </button>
               ) : (
                 <>
-                  <button
-                    onClick={handleReplyWA}
-                    disabled={isUpdating}
-                    className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
-                  >
-                    <FiMessageCircle size={18} />
-                    Balas via WhatsApp
-                  </button>
-                  <button
-                    onClick={() => setIsConfirmModalOpen(true)}
-                    disabled={isUpdating}
-                    className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-700 text-brand-dark dark:text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
-                  >
-                    <FiCheck size={18} />
-                    Tandai Selesai
-                  </button>
+                  {userData.handledBy?._id === accountUser?._id ? (
+                    <>
+                      <button
+                        onClick={() =>
+                          window.open(
+                            `https://wa.me/${userData.phone_number}`,
+                            "_blank",
+                          )
+                        }
+                        className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
+                      >
+                        <FiMessageCircle size={18} /> Lanjutkan Chat (WhatsApp)
+                      </button>
+                      <button
+                        onClick={openAssignModal}
+                        disabled={isUpdating}
+                        className="w-full flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-500/20 dark:hover:bg-orange-500/30 dark:text-orange-400 py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
+                      >
+                        <FiShare size={18} /> Delegasikan ke Staf Lain
+                      </button>
+                      <button
+                        onClick={() => setIsConfirmModalOpen(true)}
+                        disabled={isUpdating}
+                        className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-700 text-brand-dark dark:text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
+                      >
+                        <FiCheck size={18} /> Selesaikan Percakapan
+                      </button>
+                    </>
+                  ) : (
+                    <div>
+                      <div className="p-3 bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-xl">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-200 text-center">
+                          🔒 Lead ini sedang ditangani oleh <br />
+                          <span className="font-bold">
+                            {userData.handledBy?.full_name}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -317,6 +379,104 @@ const DetailLead = () => {
                 )}
                 Ya, Selesaikan
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Assign (Delegasi) */}
+      {isAssignModalOpen && (
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center shrink-0">
+                <FiShare className="text-orange-500 text-2xl" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-brand-dark dark:text-white">
+                  Delegasikan Lead
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-3">
+                  Pilih admin yang akan menangani lead ini selanjutnya.
+                </p>
+                {availableAdmins.length > 0 ? (
+                  <select
+                    value={targetAdminId}
+                    onChange={(e) => setTargetAdminId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50 dark:bg-slate-700 text-brand-dark dark:text-white cursor-pointer"
+                  >
+                    {availableAdmins.map((admin) => (
+                      <option key={admin._id} value={admin._id}>
+                        {admin.full_name} (@{admin.username})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-sm text-red-500">
+                    Tidak ada admin lain yang tersedia.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsAssignModalOpen(false)}
+                disabled={isUpdating}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleReplyWA("assign", targetAdminId)}
+                disabled={isUpdating || availableAdmins.length === 0}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-white bg-orange-500 hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isUpdating && (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                )}
+                Delegasikan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isWAModalOpen && (
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center shrink-0">
+                <FiMessageCircle className="text-green-500 text-2xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-brand-dark dark:text-white">
+                  Buka Obrolan WhatsApp
+                </h3>
+                <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1">
+                  Klik tombol di bawah untuk dialihkan ke aplikasi WhatsApp dan
+                  mulai mengobrol dengan pelanggan secara langsung.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsWAModalOpen(false)}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+              <a
+                href={`https://wa.me/${userData.phone_number}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsWAModalOpen(false)}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-white bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FiMessageCircle size={18} />
+                Buka WhatsApp
+              </a>
             </div>
           </div>
         </div>

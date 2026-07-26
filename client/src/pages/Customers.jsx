@@ -21,6 +21,7 @@ const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +35,9 @@ const Customers = () => {
   // Modal State
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [isWAModalOpen, setIsWAModalOpen] = useState(false);
+  const [waPhoneNumber, setWaPhoneNumber] = useState("");
 
   useEffect(() => {
     const timerId = setTimeout(() => {
@@ -79,7 +83,7 @@ const Customers = () => {
       }
     };
     fetchCustomers();
-  }, [debouncedSearch, cityFilter]);
+  }, [debouncedSearch, cityFilter, refreshTrigger]);
 
   // Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -146,16 +150,18 @@ const Customers = () => {
         accountId: accountUser?._id || null,
       });
 
-      window.open(`https://wa.me/${phoneNumber}`, "_blank");
+      setWaPhoneNumber(phoneNumber);
+      setIsWAModalOpen(true);
 
       setIsModalOpen(false);
-      toast.success("Membuka WhatsApp dan mengaktifkan antrean");
-      // fetchCustomer();
+      setRefreshTrigger((prev) => prev + 1);
+      toast.success("Percakapan berhasil diambil alih.");
     } catch (error) {
-      toast.error("Gagal memulai obrolan");
+      toast.error(error.response?.data?.message || "Gagal memulai obrolan");
       console.error("Chat WA Error:", error);
     }
   };
+
   return (
     <div className="space-y-6 flex flex-col h-full relative">
       {/* Header Area */}
@@ -401,6 +407,46 @@ const Customers = () => {
                 <FiMessageCircle size={18} />
                 Mulai Obrolan WhatsApp
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isWAModalOpen && (
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-500/20 flex items-center justify-center shrink-0">
+                <FiMessageCircle className="text-green-500 text-2xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-brand-dark dark:text-white">
+                  Buka Obrolan WhatsApp
+                </h3>
+                <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1">
+                  Klik tombol di bawah untuk dialihkan ke aplikasi WhatsApp dan
+                  mulai mengobrol dengan pelanggan secara langsung.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsWAModalOpen(false)}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+              <a
+                href={`https://wa.me/${waPhoneNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsWAModalOpen(false)}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-white bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <FiMessageCircle size={18} />
+                Buka WhatsApp
+              </a>
             </div>
           </div>
         </div>
