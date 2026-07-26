@@ -1,8 +1,9 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-
 const { createClient } = require("@supabase/supabase-js");
+
+global.WebSocket = require("ws");
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
