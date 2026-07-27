@@ -14,6 +14,7 @@ import {
   FiClock,
   FiCheckCircle,
   FiAlertCircle,
+  FiMessageCircle,
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 import { analyticsService } from "../services/api";
@@ -104,7 +105,8 @@ const Analytics = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
             <h2 className="text-lg font-bold text-brand-dark dark:text-white mb-4 flex items-center gap-2">
-              <FiAlertCircle className="text-red-500" /> Ringkasan HOT Leads
+              <FiAlertCircle size={25} className="text-red-500" /> Ringkasan HOT
+              Leads
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div className="bg-red-50 dark:bg-red-500/10 p-4 rounded-xl border border-red-100 dark:border-red-500/20">
@@ -136,12 +138,12 @@ const Analytics = () => {
 
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
             <h2 className="text-lg font-bold text-brand-dark dark:text-white mb-4 flex items-center gap-2">
-              <FiMessageCircle className="text-blue-500" /> Ringkasan GENERAL
-              Leads
+              <FiMessageCircle size={25} className="text-blue-500" /> Ringkasan
+              GENERAL Leads
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-              <div className="bg-gray-50 dark:bg-slate-700 p-4 rounded-xl border border-gray-200 dark:border-slate-600">
-                <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">
+              <div className="bg-gray-100 dark:bg-slate-700 p-4 rounded-xl border border-gray-200 dark:border-slate-600">
+                <div className="text-3xl font-bold text-gray-800 dark:text-gray-300">
                   {generalSummary.waiting_unhandled}
                 </div>
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1 uppercase">
@@ -171,7 +173,8 @@ const Analytics = () => {
         {/* --- BAGIAN 2: STATUS GLOBAL (1 Kolom Kanan) --- */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
           <h2 className="text-lg font-bold text-brand-dark dark:text-white mb-4 flex items-center gap-2">
-            <FiCheckCircle className="text-green-500" /> Rasio Penyelesaian
+            <FiCheckCircle size={25} className="text-green-500" /> Rasio
+            Penyelesaian
           </h2>
           <div className="flex-1 min-h-62.5 flex items-center justify-center">
             {totalActive === 0 && totalResolved === 0 ? (
