@@ -45,7 +45,7 @@ app.use("/api/v1/webhook", webhookRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/accounts", accountRoutes);
 app.use("/api/v1/knowledge", knowledgeRoutes);
-app.use("./api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
 
 // Route sederhana untuk tes
 app.get("/", (req, res) => {
