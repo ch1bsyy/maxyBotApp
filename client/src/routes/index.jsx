@@ -9,6 +9,7 @@ import Customers from "../pages/Customers";
 import Profile from "../pages/Profile";
 import Accounts from "../pages/Accounts";
 import KnowledgeBase from "../pages/KnowledgeBase";
+import Analytics from "../pages/Analytics";
 import LogoMaxy from "../assets/images/logo_maxy.png";
 
 // Guard
@@ -103,6 +104,8 @@ const AppRoutes = () => {
           <Route path="profile" element={<Profile />} />
 
           <Route path="accounts" element={<Accounts />} />
+
+          <Route path="analytics" element={<Analytics />} />
         </Route>
 
         {/* Redirect Default */}

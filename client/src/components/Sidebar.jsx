@@ -10,6 +10,7 @@ import {
   FiChevronLeft,
   FiShield,
   FiDatabase,
+  FiPieChart,
 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
@@ -23,6 +24,11 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
     { name: "Dashboard", path: "/dashboard", icon: <FiHome size={20} /> },
     ...(user?.role === "SUPERADMIN"
       ? [
+          {
+            name: "Laporan & Analitik",
+            path: "/dashboard/analytics",
+            icon: <FiPieChart size={20} />,
+          },
           {
             name: "Manajemen Akun",
             path: "/dashboard/accounts",

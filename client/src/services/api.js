@@ -61,4 +61,8 @@ export const knowledgeService = {
   delete: (table, id) => api.delete(`/knowledge/${table}/${id}`),
 };
 
+export const analyticsService = {
+  getSuperOverview: () => api.get("/analytics/super-overview"),
+};
+
 export default api;

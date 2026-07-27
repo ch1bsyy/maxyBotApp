@@ -37,6 +37,7 @@ const webhookRoutes = require("./routes/webhookRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 const knowledgeRoutes = require("./routes/knowledgeRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
 
 // Gunakan Routes
 app.use("/api/v1/auth", authRoutes);
@@ -44,6 +45,7 @@ app.use("/api/v1/webhook", webhookRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/accounts", accountRoutes);
 app.use("/api/v1/knowledge", knowledgeRoutes);
+app.use("./api/v1/analytics", analyticsRoutes);
 
 // Route sederhana untuk tes
 app.get("/", (req, res) => {
