@@ -38,6 +38,7 @@ export const dashboardService = {
     api.get(`/dashboard/chat-history/${phone_number}`),
   updateHandling: (phone_number, data) =>
     api.put(`/dashboard/update-handling/${phone_number}`, data),
+  getActiveAdmins: () => api.get("/dashboard/admins"),
   getCities: () => api.get("/dashboard/cities"),
 };
 

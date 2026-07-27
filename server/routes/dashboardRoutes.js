@@ -14,6 +14,8 @@ router.put(
   dashboardController.updateHandlingMode,
 );
 
+router.get("/admins", dashboardController.getActiveAdmins);
+
 router.get("/cities", dashboardController.getCities);
 
 module.exports = router;

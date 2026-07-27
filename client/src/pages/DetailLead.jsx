@@ -13,7 +13,7 @@ import {
 import { format } from "date-fns";
 import { id as localeID } from "date-fns/locale";
 import toast from "react-hot-toast";
-import { dashboardService, managementAccountService } from "../services/api";
+import { dashboardService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 const DetailLead = () => {
@@ -114,9 +114,7 @@ const DetailLead = () => {
     setIsUpdating(true);
 
     try {
-      const res = await managementAccountService.getAccounts({
-        isActive: true,
-      });
+      const res = await dashboardService.getActiveAdmins();
 
       const currentOwnerId = userData.handledBy?._id;
       const filteredAdmins = res.data.filter(

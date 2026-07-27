@@ -317,6 +317,27 @@ exports.updateHandlingMode = async (req, res) => {
   }
 };
 
+// GET LIST ACTIVE ADMINS FOR DELEGATION
+exports.getActiveAdmins = async (req, res) => {
+  try {
+    const { data, error } = await req.supabase
+      .from("accounts")
+      .select("id, username, full_name");
+
+    if (error) throw error;
+
+    const mappedAdmins = data.map((admin) => ({
+      ...admin,
+      _id: admin.id,
+    }));
+
+    res.status(200).json(mappedAdmins);
+  } catch (error) {
+    console.error("Get Admins Error:", error);
+    res.status(500).json({ message: "Error fetching admin list" });
+  }
+};
+
 // GET UNIQUE CITIES (JS Set Deduplication)
 exports.getCities = async (req, res) => {
   try {
