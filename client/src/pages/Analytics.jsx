@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+ 
 import { useState, useEffect } from "react";
 import {
   PieChart,
@@ -55,7 +55,7 @@ const Analytics = () => {
     );
   }
 
-  // --- EKSTRAKSI DATA UNTUK UI ---
+  // --- EXTRACTION DATA FOR UI ---
   const hotSummary = data.serviceSummary?.find(
     (s) => s.lead_type === "hot",
   ) || {
@@ -81,28 +81,27 @@ const Analytics = () => {
   const totalResolved =
     hotSummary.total_resolved + generalSummary.total_resolved;
 
-  // Data untuk Pie Chart
+  // Pie Chart Data
   const pieData = [
-    { name: "Selesai (Resolved)", value: totalResolved, color: "#10B981" }, // Emerald (Hijau)
-    { name: "Aktif / Menunggu", value: totalActive, color: "#F59E0B" }, // Amber (Kuning)
+    { name: "Selesai (Resolved)", value: totalResolved, color: "#10B981" }, // Emerald (green)
+    { name: "Aktif / Menunggu", value: totalActive, color: "#F59E0B" }, // Amber (yellow)
   ];
 
   return (
-    // PERBAIKAN 1: Tambahkan pembatas tinggi dan overflow-y-auto agar bisa di-scroll
     <div className="space-y-6 h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar animate-fade-in-up pb-10 pr-2">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-brand-dark dark:text-white flex items-center gap-2">
-          <FiPieChart /> Laporan & Analitik (Superadmin)
+          <FiPieChart /> Laporan & Analitik
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Pantau performa layanan dan efisiensi agen Customer Service secara
-          keseluruhan.
+          Pantau performa layanan dan efisiensi Admin sebagai Customer Service
+          secara keseluruhan.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* --- BAGIAN 1: LAPORAN PELAYANAN CHAT (2 Kolom Kiri) --- */}
+        {/* --- SECTION 1: REPORT CHAT SERVICE --- */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700">
             <h2 className="text-lg font-bold text-brand-dark dark:text-white mb-4 flex items-center gap-2">
@@ -171,7 +170,7 @@ const Analytics = () => {
           </div>
         </div>
 
-        {/* --- BAGIAN 2: STATUS GLOBAL (1 Kolom Kanan) --- */}
+        {/* --- SECTION 2: GLOBAL STATUS --- */}
         <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col">
           <h2 className="text-lg font-bold text-brand-dark dark:text-white mb-4 flex items-center gap-2">
             <FiCheckCircle size={25} className="text-green-500" /> Rasio
@@ -180,7 +179,7 @@ const Analytics = () => {
           <div className="flex-1 min-h-62.5 flex items-center justify-center">
             {totalActive === 0 && totalResolved === 0 ? (
               <p className="text-gray-400 text-sm">
-                Belum ada data tiket masuk.
+                Belum ada data lead masuk.
               </p>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -217,27 +216,26 @@ const Analytics = () => {
         </div>
       </div>
 
-      {/* --- BAGIAN 3: TABEL PERFORMA ADMIN --- */}
-      {/* PERBAIKAN 2: Hapus atribut "flex-1" yang membuat tabel ini kegencet */}
+      {/* --- SECTION 3: ADMIN PERFORMANCE --- */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden mt-6">
         <div className="p-4 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 flex items-center gap-2">
           <FiUsers size={25} className="text-brand-dark dark:text-white" />
           <h3 className="font-bold text-brand-dark dark:text-white">
-            Performa Agen (Customer Service)
+            Performa Admin (Customer Service)
           </h3>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
             <thead className="bg-white dark:bg-slate-800">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Nama Agen
+                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Nama Admin
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Username
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Tiket Diselesaikan
+                  Lead Diselesaikan
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Rata-rata Waktu (Menit)
@@ -251,7 +249,7 @@ const Analytics = () => {
                     colSpan="4"
                     className="px-6 py-8 text-center text-gray-500 text-sm"
                   >
-                    Belum ada data performa agen.
+                    Belum ada data performa admin.
                   </td>
                 </tr>
               ) : (
@@ -260,21 +258,21 @@ const Analytics = () => {
                     key={cs.admin_id}
                     className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-brand-dark dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center font-medium text-brand-dark dark:text-white">
                       {cs.full_name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400">
                       @{cs.username}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400">
-                        {cs.total_resolved} Tiket
+                      <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs sm:text-[13px] font-bold bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-400">
+                        {cs.total_resolved} Lead
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-600 dark:text-gray-300 flex justify-center items-center gap-1">
-                      <FiClock className="text-gray-400" />
+                      <FiClock className="text-gray-700 dark:text-gray-300" />
                       {cs.avg_handling_time_minutes
-                        ? `${cs.avg_handling_time_minutes} mnt`
+                        ? `${cs.avg_handling_time_minutes} menit`
                         : "-"}
                     </td>
                   </tr>

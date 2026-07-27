@@ -65,4 +65,11 @@ export const analyticsService = {
   getSuperOverview: () => api.get("/analytics/super-overview"),
 };
 
+export const guideService = {
+  getAll: () => api.get("/guides"),
+  create: (data) => api.post("/guides", data),
+  update: (id, data) => api.put(`/guides/${id}`, data),
+  delete: (id) => api.delete(`/guides/${id}`),
+};
+
 export default api;

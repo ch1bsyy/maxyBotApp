@@ -11,6 +11,7 @@ import {
   FiShield,
   FiDatabase,
   FiPieChart,
+  FiBookOpen,
 } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import ThemeToggle from "./ThemeToggle";
@@ -50,6 +51,11 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
       name: "Data Pelanggan",
       path: "/dashboard/customers",
       icon: <FiUsers size={20} />,
+    },
+    {
+      name: "Panduan Sistem",
+      path: "/dashboard/guides",
+      icon: <FiBookOpen size={20} />,
     },
   ];
 
