@@ -21,6 +21,7 @@ const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [cities, setCities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Filter States
@@ -36,6 +37,7 @@ const Customers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [isTakeoverModalOpen, setIsTakeoverModalOpen] = useState(false);
   const [isWAModalOpen, setIsWAModalOpen] = useState(false);
   const [waPhoneNumber, setWaPhoneNumber] = useState("");
 
@@ -143,22 +145,29 @@ const Customers = () => {
     setIsModalOpen(true);
   };
 
-  const handleChatWA = async (phoneNumber) => {
+  const initiateChatWA = (phoneNumber) => {
+    setWaPhoneNumber(phoneNumber);
+    setIsTakeoverModalOpen(true);
+  };
+
+  const proceedTakeoverWA = async () => {
+    setIsUpdating(true);
     try {
-      await dashboardService.updateHandling(phoneNumber, {
+      await dashboardService.updateHandling(waPhoneNumber, {
         action: "takeover",
         accountId: accountUser?._id || null,
       });
 
-      setWaPhoneNumber(phoneNumber);
-      setIsWAModalOpen(true);
-
+      setIsTakeoverModalOpen(false);
       setIsModalOpen(false);
+      setIsWAModalOpen(true);
       setRefreshTrigger((prev) => prev + 1);
       toast.success("Percakapan berhasil diambil alih.");
     } catch (error) {
       toast.error(error.response?.data?.message || "Gagal memulai obrolan");
       console.error("Chat WA Error:", error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -317,7 +326,7 @@ const Customers = () => {
                           <FiEye size={20} />
                         </button>
                         <button
-                          onClick={() => handleChatWA(customer.phone_number)}
+                          onClick={() => initiateChatWA(customer.phone_number)}
                           className="inline-flex min-h-11 min-w-11 items-center justify-center w-8 h-8 rounded-lg bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-500 hover:text-white cursor-pointer transition-colors"
                           title="Chat via WhatsApp"
                         >
@@ -401,7 +410,7 @@ const Customers = () => {
             </div>
             <div className="p-4 bg-gray-50 dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700">
               <button
-                onClick={() => handleChatWA(selectedCustomer.phone_number)}
+                onClick={() => initiateChatWA(selectedCustomer.phone_number)}
                 className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg font-medium transition-colors"
               >
                 <FiMessageCircle size={18} />
@@ -412,6 +421,48 @@ const Customers = () => {
         </div>
       )}
 
+      {isTakeoverModalOpen && (
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-brand-blue/10 flex items-center justify-center shrink-0">
+                <FiMessageCircle className="text-brand-blue text-2xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-brand-dark dark:text-white">
+                  Konfirmasi Ambil Alih
+                </h3>
+                <p className="text-sm md:text-base dark:text-gray-400 mt-1">
+                  Apakah Anda yakin ingin mengambil alih penanganan lead ini
+                  dari AI Chatbot?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsTakeoverModalOpen(false)}
+                disabled={isUpdating}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={proceedTakeoverWA}
+                disabled={isUpdating}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-white bg-brand-blue hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isUpdating && (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                )}
+                Ya, Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal WhatsApp Web */}
       {isWAModalOpen && (
         <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">

@@ -26,6 +26,7 @@ const DetailLead = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [isTakeoverModalOpen, setIsTakeoverModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [isWAModalOpen, setIsWAModalOpen] = useState(false);
@@ -106,6 +107,7 @@ const DetailLead = () => {
       console.error("Action Error:", error);
     } finally {
       setIsUpdating(false);
+      setIsTakeoverModalOpen(false);
     }
   };
 
@@ -352,6 +354,47 @@ const DetailLead = () => {
           </div>
         </div>
       </div>
+
+      {isTakeoverModalOpen && (
+        <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-brand-blue/10 flex items-center justify-center shrink-0">
+                <FiMessageCircle className="text-brand-blue text-2xl" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-brand-dark dark:text-white">
+                  Konfirmasi Ambil Alih
+                </h3>
+                <p className="text-sm md:text-base dark:text-gray-400 mt-1">
+                  Apakah Anda yakin ingin mengambil alih penanganan lead ini
+                  dari AI Chatbot?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6">
+              <button
+                onClick={() => setIsTakeoverModalOpen(false)}
+                disabled={isUpdating}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => handleReplyWA("takeover")}
+                disabled={isUpdating}
+                className="px-5 py-2.5 min-h-11 min-w-11 rounded-lg font-medium text-white bg-brand-blue hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isUpdating && (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                )}
+                Ya, Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isConfirmModalOpen && (
         <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
