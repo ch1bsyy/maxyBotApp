@@ -9,6 +9,7 @@ import {
   FiMessageCircle,
   FiAlertCircle,
   FiShare,
+  FiChevronDown,
 } from "react-icons/fi";
 import { format } from "date-fns";
 import { id as localeID } from "date-fns/locale";
@@ -24,7 +25,9 @@ const DetailLead = () => {
   const [userData, setUserData] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDelegating, setIsDelegating] = useState(false);
 
   const [isTakeoverModalOpen, setIsTakeoverModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -113,7 +116,7 @@ const DetailLead = () => {
 
   // Open Modal Delegation
   const openAssignModal = async () => {
-    setIsUpdating(true);
+    setIsDelegating(true);
 
     try {
       const res = await dashboardService.getActiveAdmins();
@@ -127,12 +130,13 @@ const DetailLead = () => {
       if (filteredAdmins.length > 0) {
         setTargetAdminId(filteredAdmins[0]._id);
       }
+
       setIsAssignModalOpen(true);
     } catch (error) {
       toast.error("Gagal memuat daftar admin");
       console.error("Error Fetching Data", error);
     } finally {
-      setIsUpdating(false);
+      setIsDelegating(false);
     }
   };
 
@@ -253,7 +257,7 @@ const DetailLead = () => {
             <div className="flex flex-col gap-3">
               {userData.handlingMode === "bot" ? (
                 <button
-                  onClick={() => handleReplyWA("takeover")}
+                  onClick={() => setIsTakeoverModalOpen(true)}
                   disabled={isUpdating}
                   className="w-full flex items-center justify-center gap-2 bg-brand-blue hover:bg-blue-600 text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
                 >
@@ -281,16 +285,27 @@ const DetailLead = () => {
                       >
                         <FiMessageCircle size={18} /> Lanjutkan Chat (WhatsApp)
                       </button>
+
                       <button
                         onClick={openAssignModal}
-                        disabled={isUpdating}
+                        disabled={isDelegating || isUpdating}
                         className="w-full flex items-center justify-center gap-2 bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-500/20 dark:hover:bg-orange-500/30 dark:text-orange-400 py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
                       >
-                        <FiShare size={18} /> Delegasikan ke Staf Lain
+                        {isDelegating ? (
+                          <>
+                            <span className="w-4 h-4 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin"></span>
+                            Memuat...
+                          </>
+                        ) : (
+                          <>
+                            <FiShare size={18} /> Delegasikan ke Staf Lain
+                          </>
+                        )}
                       </button>
+
                       <button
                         onClick={() => setIsConfirmModalOpen(true)}
-                        disabled={isUpdating}
+                        disabled={isUpdating || isDelegating}
                         className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 hover:bg-gray-200 dark:hover:bg-slate-700 text-brand-dark dark:text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
                       >
                         <FiCheck size={18} /> Selesaikan Percakapan
@@ -449,21 +464,26 @@ const DetailLead = () => {
                 <h3 className="text-lg font-bold text-brand-dark dark:text-white">
                   Delegasikan Lead
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-3">
+                <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1 mb-3">
                   Pilih admin yang akan menangani lead ini selanjutnya.
                 </p>
                 {availableAdmins.length > 0 ? (
-                  <select
-                    value={targetAdminId}
-                    onChange={(e) => setTargetAdminId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50 dark:bg-slate-700 text-brand-dark dark:text-white cursor-pointer"
-                  >
-                    {availableAdmins.map((admin) => (
-                      <option key={admin._id} value={admin._id}>
-                        {admin.full_name} (@{admin.username})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={targetAdminId}
+                      onChange={(e) => setTargetAdminId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue bg-gray-50 dark:bg-slate-700 text-brand-dark dark:text-white appearance-none cursor-pointer"
+                    >
+                      {availableAdmins.map((admin) => (
+                        <option key={admin._id} value={admin._id}>
+                          {admin.full_name} (@{admin.username})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                      <FiChevronDown />
+                    </div>
+                  </div>
                 ) : (
                   <p className="text-sm text-red-500">
                     Tidak ada admin lain yang tersedia.

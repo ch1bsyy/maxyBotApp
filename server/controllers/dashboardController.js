@@ -322,7 +322,8 @@ exports.getActiveAdmins = async (req, res) => {
   try {
     const { data, error } = await req.supabase
       .from("accounts")
-      .select("id, username, full_name");
+      .select("id, username, full_name")
+      .eq("is_active", true);
 
     if (error) throw error;
 

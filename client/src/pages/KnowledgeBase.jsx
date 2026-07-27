@@ -187,7 +187,7 @@ const KnowledgeBase = () => {
 
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col flex-1 overflow-hidden transition-colors">
         {/* Tabs */}
-        <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex gap-2 overflow-x-auto custom-scrollbar">
+        <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex flex-col sm:flex-row flex-wrap gap-2 overflow-x-auto custom-scrollbar">
           {Object.keys(tableConfigs).map((tabKey) => (
             <button
               key={tabKey}

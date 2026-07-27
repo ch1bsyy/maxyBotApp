@@ -433,8 +433,7 @@ const Customers = () => {
                   Konfirmasi Ambil Alih
                 </h3>
                 <p className="text-sm md:text-base dark:text-gray-400 mt-1">
-                  Apakah Anda yakin ingin mengambil alih penanganan lead ini
-                  dari AI Chatbot?
+                  Apakah Anda yakin ingin mengambil alih penanganan lead ini?
                 </p>
               </div>
             </div>
