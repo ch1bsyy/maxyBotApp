@@ -88,7 +88,8 @@ const Analytics = () => {
   ];
 
   return (
-    <div className="space-y-6 flex flex-col h-full animate-fade-in-up">
+    // PERBAIKAN 1: Tambahkan pembatas tinggi dan overflow-y-auto agar bisa di-scroll
+    <div className="space-y-6 h-[calc(100vh-6rem)] overflow-y-auto custom-scrollbar animate-fade-in-up pb-10 pr-2">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-brand-dark dark:text-white flex items-center gap-2">
@@ -217,9 +218,10 @@ const Analytics = () => {
       </div>
 
       {/* --- BAGIAN 3: TABEL PERFORMA ADMIN --- */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden flex flex-col flex-1 mt-6">
+      {/* PERBAIKAN 2: Hapus atribut "flex-1" yang membuat tabel ini kegencet */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden mt-6">
         <div className="p-4 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 flex items-center gap-2">
-          <FiUsers className="text-brand-dark dark:text-white" />
+          <FiUsers size={25} className="text-brand-dark dark:text-white" />
           <h3 className="font-bold text-brand-dark dark:text-white">
             Performa Agen (Customer Service)
           </h3>
@@ -253,7 +255,7 @@ const Analytics = () => {
                   </td>
                 </tr>
               ) : (
-                data.adminPerformance?.map((cs, idx) => (
+                data.adminPerformance?.map((cs) => (
                   <tr
                     key={cs.admin_id}
                     className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors"

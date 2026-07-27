@@ -233,6 +233,7 @@ exports.updateHandlingMode = async (req, res) => {
       updatePayload.is_lead_active = true;
       updatePayload.handled_by = accountId || null;
       updatePayload.last_interaction_at = new Date().toISOString();
+      updatePayload.taken_at = new Date().toISOString();
     }
     // ASSIGN LOGIC
     else if (action === "assign") {
@@ -251,6 +252,7 @@ exports.updateHandlingMode = async (req, res) => {
       }
       updatePayload.handled_by = targetAccountId;
       updatePayload.last_interaction_at = new Date().toISOString();
+      updatePayload.taken_at = new Date().toISOString();
     }
     // COMPLETE LOGIC
     else if (action === "complete") {
@@ -267,6 +269,7 @@ exports.updateHandlingMode = async (req, res) => {
       const historyItem = {
         handledBy: userToUpdate.handled_by,
         leadType: userToUpdate.lead_type,
+        takenAt: userToUpdate.taken_at || new Date().toISOString(),
         completedAt: new Date().toISOString(),
       };
 
@@ -281,6 +284,7 @@ exports.updateHandlingMode = async (req, res) => {
       updatePayload.is_lead_active = false;
       updatePayload.lead_type = "general";
       updatePayload.handled_by = null;
+      updatePayload.taken_at = null;
     }
 
     const { error: updateError } = await req.supabase
