@@ -156,6 +156,9 @@ const DetailLead = () => {
     );
   }
 
+  const isBotHandling = userData.handlingMode === "bot";
+  const isWaitingForAdmin =
+    userData.handlingMode === "manual" && !userData.handledBy;
   const isOwner = userData.handledBy?._id === accountUser?._id;
   const isSuperAdmin = accountUser?.role === "SUPERADMIN";
   const canManageLead = isOwner || isSuperAdmin;
@@ -177,8 +180,8 @@ const DetailLead = () => {
           <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">
             {userData.handlingMode === "manual" && userData.handledBy
               ? `Sedang ditangani oleh ${userData.handledBy.full_name}`
-              : userData.handlingMode === "manual"
-                ? "Sedang ditangani manual (Admin belum teridentifikasi)"
+              : isWaitingForAdmin
+                ? "Menunggu penanganan Admin (Belum diambil alih)"
                 : "Ditangani oleh AI Chatbot"}
           </p>
         </div>
@@ -255,7 +258,7 @@ const DetailLead = () => {
 
           {userData.isLeadActive && (
             <div className="flex flex-col gap-3">
-              {userData.handlingMode === "bot" ? (
+              {isBotHandling || isWaitingForAdmin ? (
                 <button
                   onClick={() => setIsTakeoverModalOpen(true)}
                   disabled={isUpdating}
@@ -267,13 +270,12 @@ const DetailLead = () => {
                 <>
                   {canManageLead ? (
                     <>
-                      {/* Show Badge if Superadmin */}
-                      {isSuperAdmin && !isOwner && (
+                      {isSuperAdmin && !isOwner && userData.handledBy && (
                         <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
                           <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
                             🛡️ Akses Superadmin: Lead ini milik{" "}
                             <span className="font-bold">
-                              {userData.handledBy?.full_name}
+                              {userData.handledBy.full_name}
                             </span>
                           </p>
                         </div>
@@ -283,7 +285,7 @@ const DetailLead = () => {
                         onClick={() => setIsWAModalOpen(true)}
                         className="w-full flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-xl font-medium transition-colors cursor-pointer"
                       >
-                        <FiMessageCircle size={18} /> Lanjutkan Chat (WhatsApp)
+                        <FiMessageCircle size={18} /> Balas via WhatsApp
                       </button>
 
                       <button
@@ -382,8 +384,7 @@ const DetailLead = () => {
                   Konfirmasi Ambil Alih
                 </h3>
                 <p className="text-sm md:text-base dark:text-gray-400 mt-1">
-                  Apakah Anda yakin ingin mengambil alih penanganan lead ini
-                  dari AI Chatbot?
+                  Apakah Anda yakin ingin mengambil alih penanganan lead ini?
                 </p>
               </div>
             </div>
@@ -452,7 +453,6 @@ const DetailLead = () => {
         </div>
       )}
 
-      {/* Modal Assign (Delegasi) */}
       {isAssignModalOpen && (
         <div className="fixed inset-0 z-80 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in-up">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden p-6 text-center sm:text-left">
